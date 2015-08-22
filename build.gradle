@@ -22,3 +22,8 @@ dependencies {
 task wrapper(type: Wrapper) {
     gradleVersion = '2.3'
 }
+
+task copyLib(type: Copy, dependsOn: 'jar') {
+    from 'build/libs'
+    into 'lib'
+}
