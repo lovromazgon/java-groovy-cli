@@ -3,7 +3,7 @@ Quickly create a Groovy CLI for testing and debugging Java applications
 
 ## usage
 1. [Download the jar](https://github.com/lovromazgon/java-groovy-cli/raw/master/lib/java-groovy-cli-0.1.jar) and add it to the classpath of your project
-2. Make sure [Groovy]() is also on the classpath (this project uses version 2.4.4)
+2. Make sure [Groovy](http://mvnrepository.com/artifact/org.codehaus.groovy/groovy-all) is also on the classpath (this project uses version 2.4.4)
 3. Create a main method, where you create the `GroovyCLI` object, inject all variables, which can be used in the scripts, and call `runGroovyConsole()`:
 ```
 public static void main(String[] args) {
