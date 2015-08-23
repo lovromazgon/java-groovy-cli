@@ -126,7 +126,6 @@ public class GroovyCLI {
 				out.println("Executing script...");
 				try {
 					currentResult = executeGroovyScript(scriptSb.toString());
-					scriptSb.delete(0, scriptSb.length());
 
 					out.println("Script output:");
 					if (colors)	out.print(ANSI_BLUE);
@@ -138,12 +137,14 @@ public class GroovyCLI {
 					out.println(currentResult);
 					if (colors)	out.print(ANSI_RESET);
 				} catch (Exception e) {
+					currentResult = null;
 					out.println("Exception while executing script:");
 					if (colors)	out.print(ANSI_RED);
 					e.printStackTrace(out);
 					if (colors)	out.print(ANSI_RESET);
 				}
 
+				scriptSb.delete(0, scriptSb.length());
 				scriptOutputPrintStream.print(scriptOutputStreamCurrent.toString());
 				out.println("--------------");
 				out.println("Write another script:");

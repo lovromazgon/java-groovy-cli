@@ -117,6 +117,20 @@ public class GroovyCLITest {
 		Assert.assertEquals("The returned object was not as expected!", testService.hello(), groovyCLI.getCurrentResult());
 	}
 
+	@Test
+	public void scriptSuccessAfterFail() {
+		String script = "this doesn't work\n" +
+				";;\n" +
+				"return \"test\"\n" +
+				";;\nexit";
+
+		GroovyCLI groovyCLI = new GroovyCLI(new Binding(), new ByteArrayInputStream(script.getBytes()), System.out);
+		groovyCLI.runGroovyConsole();
+
+		Assert.assertEquals("The returned object was not as expected!", "test", groovyCLI.getCurrentResult());
+
+	}
+
 	private static class TestService {
 		private String name;
 
