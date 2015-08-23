@@ -10,6 +10,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
 
@@ -32,6 +33,7 @@ public class GroovyCLI {
 
 	private static final Logger log = LoggerFactory.getLogger(GroovyCLI.class);
 	private static final String OUTPUT_VARIABLE_NAME = "out";
+	private static final String STORE_VARIABLE_NAME = "store";
 	private static final String END_OF_SCRIPT_DEFAULT = ";;";
 	private static final String EXIT_DEFAULT = "exit";
 	private static final InputStream INPUT_STREAM_DEFAULT = System.in;
@@ -39,9 +41,12 @@ public class GroovyCLI {
 
 	private final GroovyClassLoader groovyClassLoader;
 	private final Binding binding;
-	private InputStream inputStream;
-	private OutputStream outputStream;
-	private OutputStream scriptOutputStream;
+	private final Map<Object, Object> store;
+	private final OutputStream scriptOutputStreamAll;
+	private OutputStream scriptOutputStreamCurrent;
+	private InputStream cliInputStream;
+	private OutputStream cliOutputStream;
+	private Object currentResult;
 	private String endOfScript;
 	private String exit;
 	private boolean colors;
@@ -66,30 +71,31 @@ public class GroovyCLI {
 	 * Creates the GroovyCLI object, with the supplied parameters
 	 *
 	 * @param binding variable bindings
-	 * @param inputStream the stream, from where the input will be taken
-	 * @param outputStream the stream, to which the output of the script will be written
+	 * @param cliInputStream the stream, from where the input will be taken
+	 * @param cliOutputStream the stream, to which the output of the script will be written
 	 */
-	public GroovyCLI(Binding binding, InputStream inputStream, OutputStream outputStream) {
-		this(binding, inputStream, outputStream, END_OF_SCRIPT_DEFAULT, EXIT_DEFAULT);
+	public GroovyCLI(Binding binding, InputStream cliInputStream, OutputStream cliOutputStream) {
+		this(binding, cliInputStream, cliOutputStream, END_OF_SCRIPT_DEFAULT, EXIT_DEFAULT);
 	}
 
 	/**
 	 * Creates the GroovyCLI object, with the supplied parameters
 	 *
 	 * @param binding variable bindings
-	 * @param inputStream the stream, from where the input will be taken
-	 * @param outputStream the stream, to which the output of the script will be written
+	 * @param cliInputStream the stream, from where the input will be taken
+	 * @param cliOutputStream the stream, to which the output of the script will be written
 	 * @param endOfScript when this string is entered, all previous lines will be executed
 	 * @param exit when this string is entered, the CLI will exit
 	 */
-	public GroovyCLI(Binding binding, InputStream inputStream, OutputStream outputStream, String endOfScript, String exit) {
+	public GroovyCLI(Binding binding, InputStream cliInputStream, OutputStream cliOutputStream, String endOfScript, String exit) {
 		this.groovyClassLoader = new GroovyClassLoader();
-		this.inputStream = inputStream;
-		this.outputStream = outputStream;
+		this.cliInputStream = cliInputStream;
+		this.cliOutputStream = cliOutputStream;
 		this.binding = binding;
 		this.endOfScript = endOfScript;
 		this.exit = exit;
-		scriptOutputStream = new ByteArrayOutputStream();
+		scriptOutputStreamAll = new ByteArrayOutputStream();
+		store = new HashMap<>();
 		colors = true;
 	}
 
@@ -99,9 +105,11 @@ public class GroovyCLI {
 	public void runGroovyConsole() {
 		boolean run = true;
 		StringBuilder scriptSb = new StringBuilder();
-		Scanner scanner = new Scanner(inputStream);
-		PrintStream out = new PrintStream(outputStream);
-		binding.setVariable(OUTPUT_VARIABLE_NAME, new PrintStream(scriptOutputStream));
+		Scanner scanner = new Scanner(cliInputStream);
+		PrintStream out = new PrintStream(cliOutputStream);
+		PrintStream scriptOutputPrintStream = new PrintStream(scriptOutputStreamAll);
+
+		binding.setVariable(STORE_VARIABLE_NAME, store);
 
 		if (colors) out.print(ANSI_BLUE);
 		out.println("--- Groovy script CLI ---");
@@ -117,13 +125,17 @@ public class GroovyCLI {
 				//execute script
 				out.println("Executing script...");
 				try {
-					String result = executeGroovyScript(scriptSb.toString());
+					currentResult = executeGroovyScript(scriptSb.toString());
 					scriptSb.delete(0, scriptSb.length());
 
 					out.println("Script output:");
-
 					if (colors)	out.print(ANSI_BLUE);
-					out.println(result);
+					out.println(scriptOutputStreamCurrent.toString().trim());
+					if (colors)	out.print(ANSI_RESET);
+
+					out.println("Script returned:");
+					if (colors)	out.print(ANSI_BLUE);
+					out.println(currentResult);
 					if (colors)	out.print(ANSI_RESET);
 				} catch (Exception e) {
 					out.println("Exception while executing script:");
@@ -131,6 +143,8 @@ public class GroovyCLI {
 					e.printStackTrace(out);
 					if (colors)	out.print(ANSI_RESET);
 				}
+
+				scriptOutputPrintStream.print(scriptOutputStreamCurrent.toString());
 				out.println("--------------");
 				out.println("Write another script:");
 			} else if (line.equals(exit)) {
@@ -163,11 +177,14 @@ public class GroovyCLI {
 		}
 	}
 
-	private String executeGroovyScript(String code) {
+	private Object executeGroovyScript(String code) {
 		log.debug("About to execute script:\n{}", code);
+
+		scriptOutputStreamCurrent = new ByteArrayOutputStream();
+		binding.setVariable(OUTPUT_VARIABLE_NAME, new PrintStream(scriptOutputStreamCurrent));
+
 		GroovyShell shell = new GroovyShell(groovyClassLoader, binding);
-		shell.evaluate(code);
-		return scriptOutputStream.toString().trim();
+		return shell.evaluate(code);
 	}
 
 	/*
@@ -186,17 +203,17 @@ public class GroovyCLI {
 	public Binding getBinding() {
 		return binding;
 	}
-	public InputStream getInputStream() {
-		return inputStream;
+	public InputStream getCliInputStream() {
+		return cliInputStream;
 	}
-	public void setInputStream(InputStream inputStream) {
-		this.inputStream = inputStream;
+	public void setCliInputStream(InputStream cliInputStream) {
+		this.cliInputStream = cliInputStream;
 	}
-	public OutputStream getOutputStream() {
-		return outputStream;
+	public OutputStream getCliOutputStream() {
+		return cliOutputStream;
 	}
-	public void setOutputStream(OutputStream outputStream) {
-		this.outputStream = outputStream;
+	public void setCliOutputStream(OutputStream cliOutputStream) {
+		this.cliOutputStream = cliOutputStream;
 	}
 	public String getEndOfScript() {
 		return endOfScript;
@@ -210,13 +227,19 @@ public class GroovyCLI {
 	public void setExit(String exit) {
 		this.exit = exit;
 	}
-	public OutputStream getScriptOutputStream() {
-		return scriptOutputStream;
+	public OutputStream getScriptOutputStreamAll() {
+		return scriptOutputStreamAll;
+	}
+	public OutputStream getScriptOutputStreamCurrent() {
+		return scriptOutputStreamCurrent;
+	}
+	public Object getCurrentResult() {
+		return currentResult;
 	}
 
 	/*
-	 * Delegated methods
-	 */
+			 * Delegated methods
+			 */
 	public Object getVariable(String name) {
 		return binding.getVariable(name);
 	}

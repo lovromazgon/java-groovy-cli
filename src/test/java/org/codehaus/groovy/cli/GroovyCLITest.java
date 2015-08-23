@@ -26,7 +26,7 @@ public class GroovyCLITest {
 		groovyCLI.setVariable("testService", testService);
 		groovyCLI.runGroovyConsole();
 
-		Assert.assertEquals("The script output was not as expected!", testService.hello(), groovyCLI.getScriptOutputStream().toString().trim());
+		Assert.assertEquals("The script output was not as expected!", testService.hello(), groovyCLI.getScriptOutputStreamAll().toString().trim());
 	}
 
 	@Test
@@ -37,7 +37,7 @@ public class GroovyCLITest {
 		GroovyCLI groovyCLI = new GroovyCLI(new Binding(), new ByteArrayInputStream(script.getBytes()), System.out);
 		groovyCLI.runGroovyConsole();
 
-		Assert.assertEquals("The script output was not as expected!", "", groovyCLI.getScriptOutputStream().toString());
+		Assert.assertEquals("The script output was not as expected!", "", groovyCLI.getScriptOutputStreamAll().toString());
 	}
 
 	@Test
@@ -49,7 +49,7 @@ public class GroovyCLITest {
 		GroovyCLI groovyCLI = new GroovyCLI(new Binding(), new ByteArrayInputStream(script.getBytes()), System.out);
 		groovyCLI.runGroovyConsole();
 
-		Assert.assertEquals("The script output was not as expected!", "", groovyCLI.getScriptOutputStream().toString());
+		Assert.assertEquals("The script output was not as expected!", "", groovyCLI.getScriptOutputStreamAll().toString());
 	}
 
 	@Test
@@ -62,7 +62,7 @@ public class GroovyCLITest {
 		GroovyCLI groovyCLI = new GroovyCLI(new Binding(), new ByteArrayInputStream(script.getBytes()), System.out);
 		groovyCLI.runGroovyConsole();
 
-		Assert.assertEquals("The script output was not as expected!", "this is printed", groovyCLI.getScriptOutputStream().toString().trim());
+		Assert.assertEquals("The script output was not as expected!", "this is printed", groovyCLI.getScriptOutputStreamAll().toString().trim());
 	}
 
 	@Test
@@ -74,7 +74,7 @@ public class GroovyCLITest {
 		groovyCLI.setEndOfScript("EOS;");
 		groovyCLI.runGroovyConsole();
 
-		Assert.assertEquals("The script output was not as expected!", "test", groovyCLI.getScriptOutputStream().toString().trim());
+		Assert.assertEquals("The script output was not as expected!", "test", groovyCLI.getScriptOutputStreamAll().toString().trim());
 	}
 
 	@Test
@@ -86,7 +86,35 @@ public class GroovyCLITest {
 		groovyCLI.setExit("quit");
 		groovyCLI.runGroovyConsole();
 
-		Assert.assertEquals("The script output was not as expected!", "test", groovyCLI.getScriptOutputStream().toString().trim());
+		Assert.assertEquals("The script output was not as expected!", "test", groovyCLI.getScriptOutputStreamAll().toString().trim());
+	}
+
+	@Test
+	public void outputPrintStreamAllVsCurrent() {
+		String script = "out.println(\"test\");\n" +
+				";;\n" +
+				"out.println(\"test2\");\n" +
+				";;\nexit";
+
+		GroovyCLI groovyCLI = new GroovyCLI(new Binding(), new ByteArrayInputStream(script.getBytes()), System.out);
+		groovyCLI.runGroovyConsole();
+
+		Assert.assertEquals("The script output was not as expected!", "test\ntest2", groovyCLI.getScriptOutputStreamAll().toString().trim());
+		Assert.assertEquals("The script output was not as expected!", "test2", groovyCLI.getScriptOutputStreamCurrent().toString().trim());
+	}
+
+	@Test
+	public void returnObject() {
+		TestService testService = new TestService("groovy cli");
+
+		String script = "testService.hello();\n" +
+				";;\nexit";
+
+		GroovyCLI groovyCLI = new GroovyCLI(new Binding(), new ByteArrayInputStream(script.getBytes()), System.out);
+		groovyCLI.setVariable("testService", testService);
+		groovyCLI.runGroovyConsole();
+
+		Assert.assertEquals("The returned object was not as expected!", testService.hello(), groovyCLI.getCurrentResult());
 	}
 
 	private static class TestService {
